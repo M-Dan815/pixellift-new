@@ -419,20 +419,33 @@ const AmazonScraper = ({
                     <ImageIcon className="w-4 h-4 text-white" />
                   </button>
                   <button
-                    className="p-2 bg-white/20 backdrop-blur-sm rounded-lg hover:bg-white/30 transition-colors"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      const link = document.createElement('a');
-                      link.href = image.url;
-                      link.download = image.name;
-                      document.body.appendChild(link);
-                      link.click();
-                      document.body.removeChild(link);
-                    }}
-                    title="Download"
-                  >
-                    <Download className="w-4 h-4 text-white" />
-                  </button>
+  className="p-2 bg-white/20 backdrop-blur-sm rounded-lg hover:bg-white/30 transition-colors"
+  onClick={async (e) => {
+    e.stopPropagation();
+    try {
+      const response = await fetch(image.url, { mode: 'cors' });
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = image.name || 'image.jpg';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (error) {
+      console.error('Error downloading image:', error);
+      // fallback: open in new tab if fetch fails
+      window.open(image.url, '_blank');
+    }
+  }}
+  title="Download"
+>
+  <Download className="w-4 h-4 text-white" />
+</button>
+
                 </div>
                 {/* Checkbox */}
                 <div className="absolute top-2 left-2 z-10 w-5 h-5 flex items-center justify-center bg-black/50 rounded">
