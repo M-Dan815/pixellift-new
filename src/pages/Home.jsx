@@ -37,7 +37,7 @@ const Home = () => {
 			id: 1,
 			image: Feature1,
 			alt: "Feature1",
-			buttonText: "AI FILTERS",
+			buttonText: "AI BACKGROUND GENERATION",
 		},
 		{
 			id: 2,
