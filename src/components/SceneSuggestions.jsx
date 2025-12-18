@@ -37,7 +37,7 @@ const SceneSuggestions = ({
 
     try {
       const response = await axios.post(
-        'https://hopeful-caring-production.up.railway.app/api/suggest/prompts',
+        'https://pythonbackend-production-ab5d.up.railway.app/api/suggest/prompts',
         {
           image_url: selectedImage.url?selectedImage.url:selectedImage.optimized,
           num_prompts: numPrompts,

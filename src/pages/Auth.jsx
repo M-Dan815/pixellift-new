@@ -34,10 +34,9 @@ const Auth = ({setUserPlan}) => {
 	const toggleRef = useRef(null);
 	const googleButtonRef = useRef(null);
 
-	// Your Google Client ID - Replace with your actual Client ID
 	const GOOGLE_CLIENT_ID =
 		"158188939501-85n4moahem3vlqtcnj1aokaaovj8kdtc.apps.googleusercontent.com";
-	const API_URL = "https://calm-possibility-production.up.railway.app";
+	const API_URL = "https://nodebackend-production-50db.up.railway.app";
 
 	// Load Google Sign-In script
 	useEffect(() => {

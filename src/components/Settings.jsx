@@ -73,7 +73,7 @@ const SettingsComp = ({ addLog }) => {
 
       // Fetch user data from API
       const response = await axios.get(
-        `https://calm-possibility-production.up.railway.app/api/auth/user-by-id/${userId}`
+        `https://nodebackend-production-50db.up.railway.app/api/auth/user-by-id/${userId}`
       );
 
       // Access the user object from the response
@@ -104,7 +104,7 @@ const SettingsComp = ({ addLog }) => {
   const fetchSubscriptionData = async (subscriptionId) => {
     try {
       const response = await axios.get(
-        `https://calm-possibility-production.up.railway.app/api/subscriptions/${subscriptionId}`
+        `https://nodebackend-production-50db.up.railway.app/api/subscriptions/${subscriptionId}`
       );    
       setSubscriptionData(response.data.data);
     
@@ -121,7 +121,7 @@ const SettingsComp = ({ addLog }) => {
     try {
       setLoadingPayments(true);
       const response = await axios.get(
-        `https://calm-possibility-production.up.railway.app/api/subscriptions/${subscriptionId}/invoices`
+        `https://nodebackend-production-50db.up.railway.app/api/subscriptions/${subscriptionId}/invoices`
       );
       setPaymentHistory(response.data);
     } catch (err) {
@@ -177,7 +177,7 @@ const SettingsComp = ({ addLog }) => {
       const userId = JSON.parse(localStorage.getItem('user')).id;
       
       const response = await axios.put(
-        `https://calm-possibility-production.up.railway.app/api/auth/update-profile/${userId}`,
+        `https://nodebackend-production-50db.up.railway.app/api/auth/update-profile/${userId}`,
         profileData
       );
       
@@ -223,7 +223,7 @@ const SettingsComp = ({ addLog }) => {
       const userId = JSON.parse(localStorage.getItem('user')).id;
       
       await axios.put(
-        `https://calm-possibility-production.up.railway.app/api/auth/change-password/${userId}`,
+        `https://nodebackend-production-50db.up.railway.app/api/auth/change-password/${userId}`,
         {
           currentPassword: passwordData.currentPassword,
           newPassword: passwordData.newPassword

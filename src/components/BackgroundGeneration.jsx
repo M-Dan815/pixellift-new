@@ -159,7 +159,7 @@ const BackgroundGeneration = ({
 
       addLog(`🎨 Generating backgrounds for ${selectedUrls.length} selected images...`, 'info');
       const response = await axios.post(
-        'https://hopeful-caring-production.up.railway.app/api/generation/generate',
+        'https://pythonbackend-production-ab5d.up.railway.app/api/generation/generate',
         requestPayload,
         {
           headers: {

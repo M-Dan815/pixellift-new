@@ -29,7 +29,7 @@ const EbayScraper = ({
     placeholder: 'https://www.ebay.com/itm/ITEM_ID or https://www.ebay.com/sch/i.html?_nkw=shoes',
     color: 'from-blue-500 to-purple-500',
     icon: '🏪',
-    apiEndpoint: 'https://hopeful-caring-production.up.railway.app/api/scrapers/ebay',
+    apiEndpoint: 'https://pythonbackend-production-ab5d.up.railway.app/api/scrapers/ebay',
     scrapeParams: {
       max_products: 30,
       headless: true
@@ -158,7 +158,7 @@ const EbayScraper = ({
       }));
 
       const response = await axios.post(
-        'https://hopeful-caring-production.up.railway.app/api/scrapers/download-zip',
+        'https://pythonbackend-production-ab5d.up.railway.app/api/scrapers/download-zip',
         {
           files: selectedFiles,
           platform: platformConfig.name.toLowerCase()

@@ -74,7 +74,7 @@ const Merge = ({
 
     setMerging(true);
     setEndpointError(false);
-    const endpoint = 'https://hopeful-caring-production.up.railway.app/api/generation/merge';
+    const endpoint = 'https://pythonbackend-production-ab5d.up.railway.app/api/generation/merge';
     addLog(`ℹ️ Attempting to merge images using endpoint: ${endpoint}`, 'info');
 
     try {

@@ -29,7 +29,7 @@ const AmazonScraper = ({
     placeholder: 'https://www.amazon.com/dp/PRODUCT_ID or https://www.amazon.com/s?k=shoes',
     color: 'from-orange-500 to-yellow-500',
     icon: '🛍️',
-    apiEndpoint: 'https://hopeful-caring-production.up.railway.app/api/scrapers/amazon',
+    apiEndpoint: 'https://pythonbackend-production-ab5d.up.railway.app/api/scrapers/amazon',
     scrapeParams: {
       max_products: 30,
       headless: true
@@ -159,7 +159,7 @@ const AmazonScraper = ({
       }));
 
       const response = await axios.post(
-        'https://hopeful-caring-production.up.railway.app/api/scrapers/download-zip',
+        'https://pythonbackend-production-ab5d.up.railway.app/api/scrapers/download-zip',
         {
           files: selectedFiles,
           platform: platformConfig.name.toLowerCase()

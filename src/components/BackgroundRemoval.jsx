@@ -153,7 +153,7 @@ const BackgroundRemoval = ({
       const user_id = JSON.parse(localStorage.getItem("user")).id;
 
       // Try ZIP download
-      const response = await fetch("https://hopeful-caring-production.up.railway.app/api/scrapers/download-zip", {
+      const response = await fetch("https://pythonbackend-production-ab5d.up.railway.app/api/scrapers/download-zip", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -267,7 +267,7 @@ const BackgroundRemoval = ({
       log(`ℹ️ Sending background removal request for ${imageUrls.length} images`, 'info');
       log(`📤 API request payload: ${JSON.stringify(payload)}`, 'info');
 
-      const apiResponse = await fetch('https://hopeful-caring-production.up.railway.app/api/background/remove', {
+      const apiResponse = await fetch('https://pythonbackend-production-ab5d.up.railway.app/api/background/remove', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),

@@ -49,7 +49,7 @@ const Payment = ({ selectedPlan, onBack,  setUserPlan }) => {
       // ✅ Free Trial flow
       if (selectedPlan.name === "Free Trial") {
         const res2 = await fetch(
-          "https://calm-possibility-production.up.railway.app/api/payment/record-payment",
+          "https://nodebackend-production-50db.up.railway.app/api/payment/record-payment",
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -76,7 +76,7 @@ const Payment = ({ selectedPlan, onBack,  setUserPlan }) => {
 
       // ✅ Paid plan flow
       const response = await fetch(
-        "https://calm-possibility-production.up.railway.app/api/payment/create-payment-intent",
+        "https://nodebackend-production-50db.up.railway.app/api/payment/create-payment-intent",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -107,7 +107,7 @@ const Payment = ({ selectedPlan, onBack,  setUserPlan }) => {
 
       // ✅ Record payment in backend
       const res2 = await fetch(
-        "https://calm-possibility-production.up.railway.app/api/payment/record-payment",
+        "https://nodebackend-production-50db.up.railway.app/api/payment/record-payment",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

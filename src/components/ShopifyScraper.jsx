@@ -29,7 +29,7 @@ const ShopifyScraper = ({
     placeholder: 'https://store.myshopify.com/products/PRODUCT_HANDLE or https://store.myshopify.com/collections/COLLECTION',
     color: 'from-green-500 to-teal-500',
     icon: '🛒',
-    apiEndpoint: 'https://hopeful-caring-production.up.railway.app/api/scrapers/shopify',
+    apiEndpoint: 'https://pythonbackend-production-ab5d.up.railway.app/api/scrapers/shopify',
     scrapeParams: {
       max_products: 30,
       headless: true
@@ -161,7 +161,7 @@ const ShopifyScraper = ({
       }));
 
       const response = await axios.post(
-        'https://hopeful-caring-production.up.railway.app/api/scrapers/download-zip',
+        'https://pythonbackend-production-ab5d.up.railway.app/api/scrapers/download-zip',
         {
           files: selectedFiles,
           platform: platformConfig.name.toLowerCase()

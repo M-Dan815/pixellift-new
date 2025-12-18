@@ -160,7 +160,7 @@ const ImageOptimization = ({
 
       // Make the API call
       const response = await axios.post(
-        'https://hopeful-caring-production.up.railway.app/api/optimization/optimize',
+        'https://pythonbackend-production-ab5d.up.railway.app/api/optimization/optimize',
         requestPayload,
         {
           headers: {

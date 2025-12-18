@@ -18,7 +18,7 @@ const Report = ({ addLog }) => {
     if (!path || typeof path !== 'string') return 'N/A';
     let normalized = path.replace(/\\/g, '/'); // Convert \ to /
     normalized = normalized.replace(/^(images\/)+/, ''); // Remove leading images/
-    return `https://hopeful-caring-production.up.railway.app/static/${normalized}`;
+    return `https://pythonbackend-production-ab5d.up.railway.app/static/${normalized}`;
   };
 
   // Validate image URL
@@ -38,11 +38,11 @@ const Report = ({ addLog }) => {
     setError('');
     try {
       const endpoints = [
-        { key: 'allTasks', url: 'https://hopeful-caring-production.up.railway.app/api/tasks', label: 'All Tasks' },
-        { key: 'backgroundRemovalTasks', url: 'https://hopeful-caring-production.up.railway.app/api/background/tasks', label: 'Background Removal Tasks' },
-        { key: 'backgroundGenerationTasks', url: 'https://hopeful-caring-production.up.railway.app/api/generation/tasks', label: 'Background Generation Tasks' },
-        { key: 'mergeGenerationTasks', url: 'https://hopeful-caring-production.up.railway.app/api/generation/merge/tasks', label: 'Merge Generation Tasks' },
-        { key: 'scraperTasks', url: 'https://hopeful-caring-production.up.railway.app/api/scrapers/tasks', label: 'Scraper Tasks' },
+        { key: 'allTasks', url: 'https://pythonbackend-production-ab5d.up.railway.app/api/tasks', label: 'All Tasks' },
+        { key: 'backgroundRemovalTasks', url: 'https://pythonbackend-production-ab5d.up.railway.app/api/background/tasks', label: 'Background Removal Tasks' },
+        { key: 'backgroundGenerationTasks', url: 'https://pythonbackend-production-ab5d.up.railway.app/api/generation/tasks', label: 'Background Generation Tasks' },
+        { key: 'mergeGenerationTasks', url: 'https://pythonbackend-production-ab5d.up.railway.app/api/generation/merge/tasks', label: 'Merge Generation Tasks' },
+        { key: 'scraperTasks', url: 'https://pythonbackend-production-ab5d.up.railway.app/api/scrapers/tasks', label: 'Scraper Tasks' },
       ];
 
       const results = {};
