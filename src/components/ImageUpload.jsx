@@ -8,12 +8,13 @@ import {
 	Upload,
 	Loader2,
 	Plus,
+	AlertCircle,
 } from "lucide-react";
 
 const ImageUpload = ({
 	platform,
-	scrapedImages,
-	setScrapedImages,
+	uploadedImages = [],
+	setUploadedImages,
 	selectedImages,
 	setSelectedImages,
 	addLog,
@@ -56,7 +57,7 @@ const ImageUpload = ({
 		setUploadProgress(0);
 		addLog(`📤 Uploading ${validFiles.length} image(s)...`, "info");
 
-		const uploadedImages = [];
+		const newUploadedImages = [];
 		let successCount = 0;
 		let failCount = 0;
 
@@ -101,9 +102,10 @@ const ImageUpload = ({
 						source: "uploaded",
 						publicId: response.data.publicId,
 						uploadedAt: new Date().toISOString(),
+						isLocal: false, // Successfully uploaded to server
 					};
 
-					uploadedImages.push(uploadedImage);
+					newUploadedImages.push(uploadedImage);
 					successCount++;
 					addLog(`✅ Uploaded: ${file.name}`, "success");
 				} else {
@@ -115,43 +117,50 @@ const ImageUpload = ({
 				console.error("Upload error:", error);
 				failCount++;
 
+				// Create local preview but mark it as local-only (can't be processed by backend)
 				try {
-					addLog(
-						`⚠️ Backend upload failed for ${file.name}, using local preview...`,
-						"warning"
-					);
 					const dataUrl = await fileToDataUrl(file);
 
 					const fallbackImage = {
 						id: `uploaded-local-${Date.now()}-${i}`,
-						url: dataUrl,
+						url: dataUrl, // This is a data URL, not a blob URL
 						name: file.name,
 						size: formatFileSize(file.size),
 						platform: platform,
 						source: "uploaded-local",
-						isLocal: true,
+						isLocal: true, // Mark as local - cannot be processed by backend
 						uploadedAt: new Date().toISOString(),
+						originalFile: file, // Keep reference to retry upload later
 					};
 
-					uploadedImages.push(fallbackImage);
+					newUploadedImages.push(fallbackImage);
 					addLog(
-						`📷 Added local preview for: ${file.name} (may need re-upload for processing)`,
-						"info"
+						`⚠️ ${file.name} saved locally. Backend processing unavailable - please retry upload.`,
+						"warning"
 					);
 				} catch (localError) {
-					addLog(`❌ Failed to upload: ${file.name}`, "error");
+					addLog(`❌ Failed to process: ${file.name}`, "error");
 				}
 			}
 		}
 
 		setUploadProgress(100);
 
-		if (uploadedImages.length > 0) {
-			setScrapedImages((prev) => [...uploadedImages, ...prev]);
-			addLog(
-				`✨ Added ${uploadedImages.length} image(s) to gallery`,
-				"success"
-			);
+		if (newUploadedImages.length > 0) {
+			setUploadedImages((prev) => [...newUploadedImages, ...prev]);
+
+			if (successCount > 0) {
+				addLog(
+					`✨ Added ${successCount} image(s) ready for processing`,
+					"success"
+				);
+			}
+			if (failCount > 0) {
+				addLog(
+					`⚠️ ${failCount} image(s) saved locally only - retry upload for backend processing`,
+					"warning"
+				);
+			}
 		}
 
 		if (failCount > 0 && successCount === 0) {
@@ -163,6 +172,81 @@ const ImageUpload = ({
 
 		setIsUploading(false);
 		setUploadProgress(0);
+	};
+
+	// Retry upload for a local image
+	const retryUpload = async (imageId) => {
+		const image = uploadedImages.find((img) => img.id === imageId);
+		if (!image || !image.isLocal) return;
+
+		addLog(`🔄 Retrying upload for ${image.name}...`, "info");
+
+		try {
+			// If we have the original file, use it
+			if (image.originalFile) {
+				const formData = new FormData();
+				formData.append("file", image.originalFile);
+				formData.append("platform", platform);
+
+				let user_id = localStorage.getItem("user");
+				if (user_id) {
+					user_id = JSON.parse(user_id).id;
+					formData.append("user_id", user_id);
+				}
+
+				const response = await axios.post(uploadEndpoint, formData, {
+					headers: {
+						"Content-Type": "multipart/form-data",
+					},
+					timeout: 60000,
+				});
+
+				if (response.data && response.data.success && response.data.url) {
+					// Update the image with the server URL
+					setUploadedImages((prev) =>
+						prev.map((img) => {
+							if (img.id === imageId) {
+								return {
+									...img,
+									url: response.data.url,
+									publicId: response.data.publicId,
+									isLocal: false,
+									source: "uploaded",
+									originalFile: undefined, // Clean up file reference
+								};
+							}
+							return img;
+						})
+					);
+
+					// Update selection if this image was selected
+					setSelectedImages((prev) =>
+						prev.map((img) => {
+							if (img.id === imageId) {
+								return {
+									...img,
+									url: response.data.url,
+									isLocal: false,
+								};
+							}
+							return img;
+						})
+					);
+
+					addLog(`✅ Successfully uploaded: ${image.name}`, "success");
+				} else {
+					throw new Error("Upload failed");
+				}
+			} else {
+				addLog(
+					`❌ Cannot retry: Original file not available. Please re-upload.`,
+					"error"
+				);
+			}
+		} catch (error) {
+			console.error("Retry upload error:", error);
+			addLog(`❌ Retry failed for ${image.name}. Please try again.`, "error");
+		}
 	};
 
 	const fileToDataUrl = (file) => {
@@ -212,8 +296,16 @@ const ImageUpload = ({
 	};
 
 	const toggleImageSelection = (id) => {
-		const image = scrapedImages.find((img) => img.id === id);
+		const image = uploadedImages.find((img) => img.id === id);
 		if (!image) return;
+
+		// Warn if selecting a local image
+		if (image.isLocal) {
+			addLog(
+				`⚠️ "${image.name}" is stored locally and cannot be processed by the backend. Please retry upload first.`,
+				"warning"
+			);
+		}
 
 		setSelectedImages((prev) => {
 			const isSelected = prev.some((selectedImg) => selectedImg.id === id);
@@ -234,7 +326,7 @@ const ImageUpload = ({
 			}
 		});
 
-		setScrapedImages((prev) =>
+		setUploadedImages((prev) =>
 			prev.map((img) =>
 				img.id === id ? {...img, selected: !img.selected} : img
 			)
@@ -242,48 +334,106 @@ const ImageUpload = ({
 	};
 
 	const toggleSelectAll = () => {
-		if (
-			selectedImages.length === scrapedImages.length &&
-			scrapedImages.length > 0
-		) {
-			setSelectedImages([]);
-			setScrapedImages((prev) =>
+		// Only select images that are NOT local (can be processed)
+		const processableImages = uploadedImages.filter((img) => !img.isLocal);
+
+		if (processableImages.length === 0) {
+			addLog(
+				"⚠️ No processable images available. Please upload images to the server first.",
+				"warning"
+			);
+			return;
+		}
+
+		const selectedUploadedCount = selectedImages.filter(
+			(img) =>
+				(img.source === "uploaded" || img.source === "uploaded-local") &&
+				!img.isLocal
+		).length;
+
+		if (selectedUploadedCount === processableImages.length) {
+			// Deselect only uploaded images
+			setSelectedImages((prev) =>
+				prev.filter(
+					(img) => img.source !== "uploaded" && img.source !== "uploaded-local"
+				)
+			);
+			setUploadedImages((prev) =>
 				prev.map((img) => ({...img, selected: false}))
 			);
 		} else {
-			const allSelected = scrapedImages.map((img) => ({
+			// Select all processable uploaded images
+			const allUploaded = processableImages.map((img) => ({
 				id: img.id,
 				url: img.url,
 				source: img.source || "uploaded",
 				name: img.name,
-				isLocal: img.isLocal || false,
+				isLocal: false,
 			}));
-			setSelectedImages(allSelected);
-			setScrapedImages((prev) => prev.map((img) => ({...img, selected: true})));
+
+			// Remove any existing uploaded selections and add all processable ones
+			setSelectedImages((prev) => {
+				const nonUploaded = prev.filter(
+					(img) => img.source !== "uploaded" && img.source !== "uploaded-local"
+				);
+				return [...nonUploaded, ...allUploaded];
+			});
+			setUploadedImages((prev) =>
+				prev.map((img) => ({
+					...img,
+					selected: !img.isLocal,
+				}))
+			);
 		}
 	};
 
 	const removeSelectedImages = () => {
-		const selectedIds = selectedImages.map((selectedImg) => selectedImg.id);
-		setScrapedImages((prev) =>
-			prev.filter((img) => !selectedIds.includes(img.id))
+		const selectedUploadedIds = selectedImages
+			.filter(
+				(img) => img.source === "uploaded" || img.source === "uploaded-local"
+			)
+			.map((selectedImg) => selectedImg.id);
+
+		setUploadedImages((prev) =>
+			prev.filter((img) => !selectedUploadedIds.includes(img.id))
 		);
-		setSelectedImages([]);
+
+		// Remove only uploaded images from selection
+		setSelectedImages((prev) =>
+			prev.filter(
+				(img) => img.source !== "uploaded" && img.source !== "uploaded-local"
+			)
+		);
+	};
+
+	const removeImage = (imageId) => {
+		setUploadedImages((prev) => prev.filter((img) => img.id !== imageId));
+		setSelectedImages((prev) => prev.filter((img) => img.id !== imageId));
+		addLog("🗑️ Image removed", "info");
 	};
 
 	const downloadSelectedImages = async () => {
-		if (selectedImages.length === 0) {
-			addLog("⚠️ No images selected for download", "warning");
+		const selectedUploadedImages = selectedImages.filter(
+			(img) =>
+				(img.source === "uploaded" || img.source === "uploaded-local") &&
+				!img.isLocal
+		);
+
+		if (selectedUploadedImages.length === 0) {
+			addLog(
+				"⚠️ No downloadable images selected (local-only images excluded)",
+				"warning"
+			);
 			return;
 		}
 
 		addLog(
-			`⬇️ Preparing to download ${selectedImages.length} images...`,
+			`⬇️ Preparing to download ${selectedUploadedImages.length} images...`,
 			"info"
 		);
 
 		try {
-			const selectedFiles = selectedImages.map((selectedImg) => ({
+			const selectedFiles = selectedUploadedImages.map((selectedImg) => ({
 				url: selectedImg.url,
 				filename: selectedImg.name || `image-${selectedImg.id}.jpg`,
 			}));
@@ -320,7 +470,7 @@ const ImageUpload = ({
 			);
 
 			addLog("⚠️ Attempting individual downloads...", "info");
-			selectedImages.forEach((selectedImg) => {
+			selectedUploadedImages.forEach((selectedImg) => {
 				const link = document.createElement("a");
 				link.href = selectedImg.url;
 				link.download = selectedImg.name || `image-${selectedImg.id}.jpg`;
@@ -336,6 +486,17 @@ const ImageUpload = ({
 	const isImageSelected = (id) => {
 		return selectedImages.some((selectedImg) => selectedImg.id === id);
 	};
+
+	// Count only processable uploaded images in selection
+	const selectedUploadedCount = selectedImages.filter(
+		(img) =>
+			(img.source === "uploaded" || img.source === "uploaded-local") &&
+			!img.isLocal
+	).length;
+
+	// Count local-only images
+	const localOnlyCount = uploadedImages.filter((img) => img.isLocal).length;
+	const processableCount = uploadedImages.filter((img) => !img.isLocal).length;
 
 	return (
 		<div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-6">
@@ -361,6 +522,22 @@ const ImageUpload = ({
 					</p>
 				</div>
 			</div>
+
+			{/* Local images warning */}
+			{localOnlyCount > 0 && (
+				<div className="bg-yellow-500/20 border border-yellow-500/50 rounded-lg p-4 flex items-start gap-3 mb-6">
+					<AlertCircle className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
+					<div>
+						<p className="text-yellow-300 font-medium">
+							{localOnlyCount} image(s) stored locally only
+						</p>
+						<p className="text-yellow-200/80 text-sm mt-1">
+							These images cannot be processed by the backend. Click the retry
+							button on each image to upload to the server.
+						</p>
+					</div>
+				</div>
+			)}
 
 			{/* Upload Section */}
 			<div className="mb-6">
@@ -430,30 +607,36 @@ const ImageUpload = ({
 				</div>
 			</div>
 
-			{/* Actions - Only show if there are images */}
-			{scrapedImages.length > 0 && (
+			{/* Actions - Only show if there are uploaded images */}
+			{uploadedImages.length > 0 && (
 				<div className="flex flex-wrap items-center justify-between gap-3 mb-6">
 					<div className="flex items-center gap-3">
 						<button
 							onClick={toggleSelectAll}
 							className="flex items-center gap-2 px-3 py-2 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg text-sm text-white transition-colors"
+							disabled={processableCount === 0}
 						>
 							<Check className="w-4 h-4" />
-							{selectedImages.length === scrapedImages.length &&
-							scrapedImages.length > 0
+							{selectedUploadedCount === processableCount &&
+							processableCount > 0
 								? "Deselect All"
 								: "Select All"}
 						</button>
 						<span className="text-sm text-gray-300">
-							{selectedImages.length} of {scrapedImages.length} selected
+							{selectedUploadedCount} of {processableCount} selected
+							{localOnlyCount > 0 && (
+								<span className="text-yellow-400 ml-1">
+									({localOnlyCount} local only)
+								</span>
+							)}
 						</span>
 					</div>
 					<div className="flex items-center gap-3">
 						<button
 							onClick={downloadSelectedImages}
-							disabled={selectedImages.length === 0}
+							disabled={selectedUploadedCount === 0}
 							className={`px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 transition-colors ${
-								selectedImages.length === 0
+								selectedUploadedCount === 0
 									? "bg-gray-600 text-gray-400 cursor-not-allowed"
 									: "bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700"
 							}`}
@@ -463,9 +646,9 @@ const ImageUpload = ({
 						</button>
 						<button
 							onClick={removeSelectedImages}
-							disabled={selectedImages.length === 0}
+							disabled={selectedUploadedCount === 0}
 							className={`p-2 rounded-lg transition-colors ${
-								selectedImages.length === 0
+								selectedUploadedCount === 0
 									? "text-gray-600 cursor-not-allowed"
 									: "text-red-400 hover:bg-red-500/20"
 							}`}
@@ -478,14 +661,16 @@ const ImageUpload = ({
 			)}
 
 			{/* Image Grid */}
-			{scrapedImages.length > 0 ? (
+			{uploadedImages.length > 0 ? (
 				<div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-					{scrapedImages.map((image) => (
+					{uploadedImages.map((image) => (
 						<div key={image.id} className="relative group">
 							<div
 								className={`relative bg-white/5 border-2 ${
 									isImageSelected(image.id)
 										? "border-purple-400 shadow-lg shadow-purple-400/20"
+										: image.isLocal
+										? "border-yellow-500/50"
 										: "border-transparent hover:border-white/30"
 								} rounded-xl overflow-hidden transition-all duration-300 hover:scale-105`}
 							>
@@ -502,21 +687,18 @@ const ImageUpload = ({
 									/>
 								</div>
 
-								{/* Uploaded badge */}
-								{(image.source === "uploaded" ||
-									image.source === "uploaded-local") && (
-									<div className="absolute top-2 right-2 z-10">
-										<span
-											className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
-												image.isLocal
-													? "bg-yellow-500/80 text-yellow-900"
-													: "bg-green-500/80 text-green-900"
-											}`}
-										>
-											{image.isLocal ? "Local" : "Uploaded"}
+								{/* Status badge */}
+								<div className="absolute top-2 right-2 z-10">
+									{image.isLocal ? (
+										<span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-yellow-500/80 text-yellow-900">
+											Local Only
 										</span>
-									</div>
-								)}
+									) : (
+										<span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-green-500/80 text-green-900">
+											Uploaded
+										</span>
+									)}
+								</div>
 
 								{/* Hover overlay */}
 								<div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-2">
@@ -530,31 +712,56 @@ const ImageUpload = ({
 									>
 										<ImageIcon className="w-4 h-4 text-white" />
 									</button>
+									{image.isLocal ? (
+										<button
+											className="p-2 bg-yellow-500/80 backdrop-blur-sm rounded-lg hover:bg-yellow-500 transition-colors"
+											onClick={(e) => {
+												e.stopPropagation();
+												retryUpload(image.id);
+											}}
+											title="Retry Upload"
+										>
+											<Loader2 className="w-4 h-4 text-white" />
+										</button>
+									) : (
+										<button
+											className="p-2 bg-white/20 backdrop-blur-sm rounded-lg hover:bg-white/30 transition-colors"
+											onClick={async (e) => {
+												e.stopPropagation();
+												try {
+													const response = await fetch(image.url, {
+														mode: "cors",
+													});
+													const blob = await response.blob();
+													const blobUrl = window.URL.createObjectURL(blob);
+
+													const link = document.createElement("a");
+													link.href = blobUrl;
+													link.download = image.name || "image.jpg";
+													document.body.appendChild(link);
+													link.click();
+													link.remove();
+
+													window.URL.revokeObjectURL(blobUrl);
+												} catch (error) {
+													console.error("Error downloading image:", error);
+													window.open(image.url, "_blank");
+												}
+											}}
+											title="Download"
+										>
+											<Download className="w-4 h-4 text-white" />
+										</button>
+									)}
 									<button
-										className="p-2 bg-white/20 backdrop-blur-sm rounded-lg hover:bg-white/30 transition-colors"
-										onClick={async (e) => {
+										className="p-2 bg-red-500/80 backdrop-blur-sm rounded-lg hover:bg-red-500 transition-colors"
+										onClick={(e) => {
 											e.stopPropagation();
-											try {
-												const response = await fetch(image.url, {mode: "cors"});
-												const blob = await response.blob();
-												const blobUrl = window.URL.createObjectURL(blob);
-
-												const link = document.createElement("a");
-												link.href = blobUrl;
-												link.download = image.name || "image.jpg";
-												document.body.appendChild(link);
-												link.click();
-												link.remove();
-
-												window.URL.revokeObjectURL(blobUrl);
-											} catch (error) {
-												console.error("Error downloading image:", error);
-												window.open(image.url, "_blank");
-											}
+											removeImage(image.id);
 										}}
-										title="Download"
+										title="Remove"
 									>
-										<Download className="w-4 h-4 text-white" />
+										<Trash2 className="w-4 h-4 text-white" />
 									</button>
 								</div>
 
@@ -583,9 +790,17 @@ const ImageUpload = ({
 										<span className="text-[10px] text-gray-500">
 											{image.size}
 										</span>
-										<span className="text-[10px] px-1.5 py-0.5 bg-white/10 rounded">
-											Uploaded
-										</span>
+										{image.isLocal && (
+											<button
+												onClick={(e) => {
+													e.stopPropagation();
+													retryUpload(image.id);
+												}}
+												className="text-[10px] px-1.5 py-0.5 bg-yellow-500/80 hover:bg-yellow-500 rounded text-yellow-900 font-medium"
+											>
+												Retry
+											</button>
+										)}
 									</div>
 								</div>
 							</div>

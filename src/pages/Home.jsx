@@ -122,7 +122,8 @@ const Home = () => {
 	const videoSectionRef = useRef(null);
 	const videoContainerRef = useRef(null);
 	const videoPlayerRef = useRef(null);
-	const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+	const [isVideoPlaying, setIsVideoPlaying] = useState(true); // Changed to true for autoplay
+	const [isMuted, setIsMuted] = useState(true); // Track mute state
 
 	// For Results section
 	const resultsSectionRef = useRef(null);
@@ -176,13 +177,10 @@ const Home = () => {
 
 		if (isMobile) {
 			if (diff === 0) {
-				// Center card - full size
 				return {x: 0, y: -20, scale: 1, opacity: 1, zIndex: 10, rotateY: 0};
 			} else if (diff === 1) {
-				// Right card
 				return {x: 150, y: 0, scale: 0.85, opacity: 0, zIndex: 5, rotateY: 15};
 			} else {
-				// Left card
 				return {
 					x: -150,
 					y: 0,
@@ -194,10 +192,8 @@ const Home = () => {
 			}
 		} else {
 			if (diff === 0) {
-				// Center card - slightly larger via scale
 				return {x: 0, y: -30, scale: 1.1, opacity: 1, zIndex: 10, rotateY: 0};
 			} else if (diff === 1) {
-				// Right card - smaller via scale
 				return {
 					x: 350,
 					y: 0,
@@ -207,7 +203,6 @@ const Home = () => {
 					rotateY: -5,
 				};
 			} else {
-				// Left card - smaller via scale
 				return {
 					x: -350,
 					y: 0,
@@ -316,26 +311,63 @@ const Home = () => {
 		animateCards(index);
 	};
 
-	// Handle video play
-	const handlePlayVideo = () => {
-		setIsVideoPlaying(true);
-		setTimeout(() => {
-			if (videoPlayerRef.current) {
-				videoPlayerRef.current.play();
-			}
-		}, 100);
-	};
-
-	// Handle video pause
+	// Handle video click - toggle play/pause
 	const handleVideoClick = () => {
 		if (videoPlayerRef.current) {
 			if (videoPlayerRef.current.paused) {
 				videoPlayerRef.current.play();
+				setIsVideoPlaying(true);
 			} else {
 				videoPlayerRef.current.pause();
+				setIsVideoPlaying(false);
 			}
 		}
 	};
+
+	// Toggle mute
+	const handleToggleMute = (e) => {
+		e.stopPropagation();
+		if (videoPlayerRef.current) {
+			videoPlayerRef.current.muted = !videoPlayerRef.current.muted;
+			setIsMuted(!isMuted);
+		}
+	};
+
+	// Auto-play video when it comes into view using ScrollTrigger
+	useEffect(() => {
+		const ctx = gsap.context(() => {
+			ScrollTrigger.create({
+				trigger: videoSectionRef.current,
+				start: "top 80%",
+				end: "bottom 20%",
+				onEnter: () => {
+					if (videoPlayerRef.current) {
+						videoPlayerRef.current.play().catch(() => {
+							// Autoplay was prevented, user interaction needed
+							setIsVideoPlaying(false);
+						});
+					}
+				},
+				onLeave: () => {
+					if (videoPlayerRef.current) {
+						videoPlayerRef.current.pause();
+					}
+				},
+				onEnterBack: () => {
+					if (videoPlayerRef.current) {
+						videoPlayerRef.current.play().catch(() => {});
+					}
+				},
+				onLeaveBack: () => {
+					if (videoPlayerRef.current) {
+						videoPlayerRef.current.pause();
+					}
+				},
+			});
+		}, videoSectionRef);
+
+		return () => ctx.revert();
+	}, []);
 
 	// Animation for Hero section
 	useEffect(() => {
@@ -549,82 +581,101 @@ const Home = () => {
 						className="relative w-full max-w-4xl rounded-2xl overflow-hidden shadow-2xl"
 					>
 						<div className="relative aspect-video w-full bg-black">
-							{/* Play Button Cover */}
-							{!isVideoPlaying && (
-								<div
-									className="absolute inset-0 z-20 cursor-pointer group"
-									onClick={handlePlayVideo}
-								>
-									<div className="absolute inset-0 bg-gradient-to-br from-purple-900 via-indigo-900 to-blue-900">
-										<div className="absolute inset-0 opacity-20">
-											<div
-												className="absolute inset-0"
-												style={{
-													backgroundImage: `radial-gradient(circle at 25% 25%, rgba(255,255,255,0.1) 0%, transparent 50%),
-																	  radial-gradient(circle at 75% 75%, rgba(255,255,255,0.1) 0%, transparent 50%)`,
-												}}
-											/>
-										</div>
-										<div
-											className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent"
-											style={{
-												animation: "videoShimmer 3s infinite",
-											}}
-										/>
-									</div>
-
-									<div className="absolute inset-0 flex items-center justify-center">
-										<div className="relative">
-											<div
-												className="absolute inset-0 rounded-full bg-white/20 animate-ping"
-												style={{animationDuration: "2s"}}
-											></div>
-											<div
-												className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 
-														  flex items-center justify-center shadow-2xl
-														  transform transition-transform duration-300 group-hover:scale-110"
-											>
-												<svg
-													className="w-8 h-8 sm:w-10 sm:h-10 text-white ml-1"
-													fill="currentColor"
-													viewBox="0 0 24 24"
-												>
-													<path d="M8 5v14l11-7z" />
-												</svg>
-											</div>
-										</div>
-									</div>
-
-									<div className="absolute bottom-6 left-0 right-0 text-center">
-										<p className="text-white/80 text-sm sm:text-base font-medium">
-											Click to watch the demo
-										</p>
-									</div>
-								</div>
-							)}
-
-							{/* Video Player */}
+							{/* Video Player - Now with autoPlay and muted */}
 							<video
 								ref={videoPlayerRef}
-								className={`w-full h-full object-cover transition-opacity duration-500 ${
-									isVideoPlaying ? "opacity-100" : "opacity-0"
-								}`}
+								className="w-full h-full object-cover cursor-pointer"
 								src={video}
+								autoPlay
+								muted
 								loop
 								playsInline
 								onClick={handleVideoClick}
 								onPlay={() => setIsVideoPlaying(true)}
-								preload="metadata"
+								onPause={() => setIsVideoPlaying(false)}
+								preload="auto"
 							>
 								Your browser does not support the video tag.
 							</video>
 
-							{isVideoPlaying && (
+							{/* Play/Pause Overlay - Shows when paused */}
+							{!isVideoPlaying && (
 								<div
-									className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent 
-											   opacity-0 hover:opacity-100 transition-opacity duration-300 pointer-events-none"
-								/>
+									className="absolute inset-0 z-20 cursor-pointer group flex items-center justify-center bg-black/40"
+									onClick={handleVideoClick}
+								>
+									<div className="relative">
+										<div
+											className="absolute inset-0 rounded-full bg-white/20 animate-ping"
+											style={{animationDuration: "2s"}}
+										></div>
+										<div
+											className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 
+													  flex items-center justify-center shadow-2xl
+													  transform transition-transform duration-300 group-hover:scale-110"
+										>
+											<svg
+												className="w-8 h-8 sm:w-10 sm:h-10 text-white ml-1"
+												fill="currentColor"
+												viewBox="0 0 24 24"
+											>
+												<path d="M8 5v14l11-7z" />
+											</svg>
+										</div>
+									</div>
+								</div>
 							)}
+
+							{/* Mute/Unmute Button */}
+							<button
+								onClick={handleToggleMute}
+								className="absolute bottom-4 right-4 z-30 w-10 h-10 sm:w-12 sm:h-12 rounded-full 
+										   bg-black/50 hover:bg-black/70 flex items-center justify-center 
+										   transition-all duration-300 backdrop-blur-sm"
+								aria-label={isMuted ? "Unmute" : "Mute"}
+							>
+								{isMuted ? (
+									<svg
+										className="w-5 h-5 sm:w-6 sm:h-6 text-white"
+										fill="none"
+										stroke="currentColor"
+										viewBox="0 0 24 24"
+									>
+										<path
+											strokeLinecap="round"
+											strokeLinejoin="round"
+											strokeWidth={2}
+											d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"
+										/>
+										<path
+											strokeLinecap="round"
+											strokeLinejoin="round"
+											strokeWidth={2}
+											d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"
+										/>
+									</svg>
+								) : (
+									<svg
+										className="w-5 h-5 sm:w-6 sm:h-6 text-white"
+										fill="none"
+										stroke="currentColor"
+										viewBox="0 0 24 24"
+									>
+										<path
+											strokeLinecap="round"
+											strokeLinejoin="round"
+											strokeWidth={2}
+											d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"
+										/>
+									</svg>
+								)}
+							</button>
+
+							{/* Gradient overlay on hover */}
+							<div
+								className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent 
+										   opacity-0 hover:opacity-100 transition-opacity duration-300 pointer-events-none"
+							/>
 						</div>
 					</div>
 
@@ -644,13 +695,6 @@ const Home = () => {
 						</Link>
 					</div>
 				</div>
-
-				<style>{`
-					@keyframes videoShimmer {
-						0% { transform: translateX(-100%); }
-						100% { transform: translateX(100%); }
-					}
-				`}</style>
 			</section>
 
 			{/* Features Section - FIXED ANIMATION */}

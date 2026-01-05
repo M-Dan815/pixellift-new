@@ -128,6 +128,10 @@ const View = () => {
 	const [validScrapedImages, setValidScrapedImages] = useState(() =>
 		loadFromSessionStorage("pixelLift_validScrapedImages", [])
 	);
+	// New state for uploaded images - separate from scraped images
+	const [uploadedImages, setUploadedImages] = useState(() =>
+		loadFromSessionStorage("pixelLift_uploadedImages", [])
+	);
 	const [maxProducts, setMaxProducts] = useState(() =>
 		loadFromSessionStorage("pixelLift_maxProducts", 30)
 	);
@@ -225,6 +229,11 @@ const View = () => {
 		saveToSessionStorage("pixelLift_validScrapedImages", validScrapedImages);
 	}, [validScrapedImages]);
 
+	// Save uploaded images to session storage
+	useEffect(() => {
+		saveToSessionStorage("pixelLift_uploadedImages", uploadedImages);
+	}, [uploadedImages]);
+
 	useEffect(() => {
 		saveToSessionStorage("pixelLift_maxProducts", maxProducts);
 	}, [maxProducts]);
@@ -305,6 +314,7 @@ const View = () => {
 			"pixelLift_logs",
 			"pixelLift_scrapedImages",
 			"pixelLift_validScrapedImages",
+			"pixelLift_uploadedImages",
 			"pixelLift_maxProducts",
 			"pixelLift_platform",
 			"pixelLift_whiteBackground",
@@ -333,6 +343,7 @@ const View = () => {
 		setLogs([]);
 		setScrapedImages([]);
 		setValidScrapedImages([]);
+		setUploadedImages([]);
 		setMaxProducts(30);
 		setPlatform("amazon");
 		setWhiteBackground(false);
@@ -533,14 +544,15 @@ const View = () => {
 		}
 	};
 
-	// Toggle select all/none images
+	// Toggle select all/none images (includes both scraped and uploaded)
 	const toggleSelectAll = () => {
-		if (selectedImages.length === scrapedImages.length) {
+		const allImages = [...scrapedImages, ...uploadedImages];
+		if (selectedImages.length === allImages.length) {
 			setSelectedImages([]); // Deselect all
 		} else {
 			setSelectedImages(
-				scrapedImages.map((img) => {
-					return {id: img.id, url: img.url, source: "scraped"};
+				allImages.map((img) => {
+					return {id: img.id, url: img.url, source: img.source || "scraped"};
 				})
 			); // Select all
 		}
@@ -552,6 +564,7 @@ const View = () => {
 		setValidScrapedImages((prev) =>
 			prev.map((img) => ({...img, selected: false}))
 		);
+		setUploadedImages((prev) => prev.map((img) => ({...img, selected: false})));
 	};
 
 	// Plan-based feature access helpers
@@ -642,6 +655,9 @@ const View = () => {
 				return <div>Unsupported platform</div>;
 		}
 	};
+
+	// Combine scraped and uploaded images for processing components
+	const allAvailableImages = [...validScrapedImages, ...uploadedImages];
 
 	return (
 		<div className="min-h-screen bg-gradient-to-br from-[#1a1c54] via-[#2d2e7a] to-[#4c0d73] pt-16 sm:pt-20">
@@ -807,19 +823,21 @@ const View = () => {
 							<div className="space-y-4 sm:space-y-6">
 								{renderScraper()}
 
-								{/* Background Removal - Available for Starter, Growth, Enterprise */}
+								{/* Image Upload - Now uses separate uploadedImages state */}
 								<ImageUpload
 									platform={platform}
-									scrapedImages={scrapedImages}
-									setScrapedImages={setScrapedImages}
+									uploadedImages={uploadedImages}
+									setUploadedImages={setUploadedImages}
 									selectedImages={selectedImages}
 									setSelectedImages={setSelectedImages}
 									addLog={addLog}
 								/>
+
+								{/* Background Removal - Available for Starter, Growth, Enterprise */}
 								{(isFree || isStarter || isGrowth || isEnterprise) && (
 									<BackgroundRemoval
 										selectedImages={selectedImages}
-										scrapedImages={scrapedImages}
+										scrapedImages={allAvailableImages}
 										setScrapedImages={setValidScrapedImages}
 										setSelectedImages={setSelectedImages}
 										platform={platform}
@@ -832,6 +850,7 @@ const View = () => {
 										toggleSelectAll={toggleSelectAll}
 										clearSelections={clearSelections}
 										optimizedImages={optimizedImages}
+										uploadedImages={uploadedImages}
 									/>
 								)}
 
@@ -840,7 +859,7 @@ const View = () => {
 									<ImageOptimization
 										selectedImages={selectedImages}
 										setSelectedImages={setSelectedImages}
-										scrapedImages={scrapedImages}
+										scrapedImages={allAvailableImages}
 										processedImages={processedImages}
 										optimizationOptions={optimizationOptions}
 										setOptimizationOptions={setOptimizationOptions}
@@ -854,13 +873,14 @@ const View = () => {
 										toggleSelectAll={toggleSelectAll}
 										clearSelections={clearSelections}
 										platform={platform}
+										uploadedImages={uploadedImages}
 									/>
 								)}
 
 								{isEnterprise && (
 									<SceneSuggestions
 										selectedImages={selectedImages}
-										scrapedImages={validScrapedImages}
+										scrapedImages={allAvailableImages}
 										optimizedImages={[
 											...(optimizedImages || []),
 											...(processedImages || []),
@@ -881,6 +901,7 @@ const View = () => {
 										toggleSelectAll={toggleSelectAll}
 										clearSelections={clearSelections}
 										platform={platform}
+										uploadedImages={uploadedImages}
 									/>
 								)}
 
@@ -893,7 +914,7 @@ const View = () => {
 											...(optimizedImages || []),
 											...(processedImages || []),
 										]} // Combined like Scene Suggestions
-										scrapedImages={validScrapedImages} // Use validScrapedImages consistently
+										scrapedImages={allAvailableImages} // Use combined images
 										backgroundPrompt={backgroundPrompt}
 										setBackgroundPrompt={setBackgroundPrompt}
 										negativePrompt={negativePrompt}
@@ -912,6 +933,7 @@ const View = () => {
 										toggleSelectAll={toggleSelectAll}
 										clearSelections={clearSelections}
 										platform={platform}
+										uploadedImages={uploadedImages}
 									/>
 								)}
 							</div>
@@ -923,7 +945,7 @@ const View = () => {
 								<div className="space-y-4 sm:space-y-6">
 									<BackgroundRemoval
 										selectedImages={selectedImages}
-										scrapedImages={validScrapedImages}
+										scrapedImages={allAvailableImages}
 										setScrapedImages={setValidScrapedImages}
 										setSelectedImages={setSelectedImages}
 										platform={platform}
@@ -936,6 +958,7 @@ const View = () => {
 										toggleSelectAll={toggleSelectAll}
 										clearSelections={clearSelections}
 										optimizedImages={optimizedImages}
+										uploadedImages={uploadedImages}
 									/>
 								</div>
 							)}
@@ -946,7 +969,7 @@ const View = () => {
 									<ImageOptimization
 										selectedImages={selectedImages}
 										setSelectedImages={setSelectedImages}
-										scrapedImages={validScrapedImages}
+										scrapedImages={allAvailableImages}
 										processedImages={processedImages}
 										optimizationOptions={optimizationOptions}
 										setOptimizationOptions={setOptimizationOptions}
@@ -960,6 +983,7 @@ const View = () => {
 										toggleSelectAll={toggleSelectAll}
 										clearSelections={clearSelections}
 										platform={platform}
+										uploadedImages={uploadedImages}
 									/>
 								</div>
 							)}
@@ -968,7 +992,7 @@ const View = () => {
 							<div className="space-y-4 sm:space-y-6">
 								<SceneSuggestions
 									selectedImages={selectedImages}
-									scrapedImages={validScrapedImages}
+									scrapedImages={allAvailableImages}
 									optimizedImages={optimizedImages}
 									brandStyle={brandStyle}
 									setBrandStyle={setBrandStyle}
@@ -986,6 +1010,7 @@ const View = () => {
 									toggleSelectAll={toggleSelectAll}
 									clearSelections={clearSelections}
 									platform={platform}
+									uploadedImages={uploadedImages}
 								/>
 							</div>
 						)}
@@ -1000,7 +1025,7 @@ const View = () => {
 											...(optimizedImages || []),
 											...(processedImages || []),
 										]} // Combined like Scene Suggestions
-										scrapedImages={validScrapedImages}
+										scrapedImages={allAvailableImages}
 										backgroundPrompt={backgroundPrompt}
 										setBackgroundPrompt={setBackgroundPrompt}
 										negativePrompt={negativePrompt}
@@ -1019,6 +1044,7 @@ const View = () => {
 										toggleSelectAll={toggleSelectAll}
 										clearSelections={clearSelections}
 										platform={platform}
+										uploadedImages={uploadedImages}
 									/>
 								</div>
 							)}
