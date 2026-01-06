@@ -39,7 +39,7 @@ const Cards = () => {
 	useEffect(() => {
 		const checkAuthStatus = () => {
 			// Check for authentication token in localStorage
-			const token = localStorage.getItem("token");
+			const token = localStorage.getItem("user");
 			// You can also check sessionStorage or cookies depending on your auth implementation
 			// const token = sessionStorage.getItem('token');
 
